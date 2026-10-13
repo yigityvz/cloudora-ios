@@ -3,6 +3,8 @@
 This is a port of Android baseline a18a3e4, not a new game or a release-approved product. Use Unity 6000.5.9f1 (b57deb96f08d), macOS, iOS Build Support and Xcode. See IOS_ARCHITECTURE.md for preserved behavior and known limitations; IOS_DEVICE_QA.md for acceptance.
 
 ## Setup
+Git LFS is required: this history stores PNG assets as LFS pointers. On a new Mac install Git LFS (for example `brew install git-lfs`), then in this iOS repository run `git lfs install --local` and `git lfs pull origin`. Verify `git lfs fsck` and that the icon is a real PNG before opening Unity. The audit host uses an official Git LFS 3.8.0 binary in the sibling work/ folder with repository-local filters/hooks; keep that tool folder until installing Git LFS normally. No global Git config or Android checkout was modified. All six historical LFS objects were copied to iOS origin.
+
 1. Unity Hub → Installs → 6000.5.9f1 → gear/Manage → Add modules → iOS Build Support → Install (already detected on the audit host).
 2. Unity Hub → Projects → Add → Add project from disk → select the sibling `cloudora-ios` root. Never select cloudora-android for port work.
 3. Open Assets/_Cloudora/Scenes/02_Gameplay.unity. Allow package import; investigate any Console errors before building.

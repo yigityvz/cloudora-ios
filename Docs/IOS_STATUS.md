@@ -3,15 +3,20 @@
 | Checkpoint | Status | Evidence |
 |---|---|---|
 | Source clean, reference preserved | PASS | Android baseline a18a3e4; no source edits |
-| History-preserving sibling iOS/main baseline push | PASS | origin cloudora-ios; main points to a18a3e4 at baseline push |
+| History-preserving sibling iOS/main baseline push | PASS | origin cloudora-ios; original history preserved |
+| LFS history transfer/integrity | PASS | 6 historical objects uploaded to iOS; git lfs fsck OK |
 | Repository/code audit | PASS | IOS_ARCHITECTURE.md |
-| Editor isolation/build/haptic/layout implementation | Implemented, validation pending | iOS-only native adapter; Android APIs guarded |
-| Fresh baseline EditMode | BLOCKED | Sandbox UPM cache/ILPP socket; no result XML |
-| Port EditMode | BLOCKED | Logs/ios-test.log: No valid Unity Editor license found; no result XML |
-| 10,000-level validation | NOT RUN | Original validator preserved |
-| iOS configuration persisted by Unity | NOT RUN | Run configure command |
-| Xcode export/native compilation | NOT RUN | Requires successful editor compilation/export |
-| Physical iPhone/signing | MANUAL TEST REQUIRED | Owner-local Xcode account/Team/device |
+| iOS editor compilation | PASS | Fresh Unity run after provisioning API correction; no C# warnings/errors |
+| Port EditMode | PASS | 40/40 (32 original + 8 iOS), Logs/ios-editmode.xml, 2026-10-13 08:44:19–20 UTC |
+| 10,000-level validation | PASS | total=10000 failures=0; difficulty 34.5–110.3, Logs/ios-validate.log |
+| iOS configuration persisted by Unity | PASS | Bundle/version/build, iPhone portrait, IL2CPP ARM64, Metal, iOS 15 and no Team/profile saved |
+| Xcode export | PASS | CLOUDORA_IOS_BUILD result=Succeeded, errors=0 warnings=5; Logs/ios-build.log |
+| Unsigned native Xcode compilation | PASS | Xcode 27.0/iPhoneOS27.0, Debug arm64, CODE_SIGNING_ALLOWED=NO, BUILD SUCCEEDED |
+| Physical iPhone/signing | MANUAL TEST REQUIRED | Physical iPhone now paired/available; owner selecting local Xcode Team |
 | Privacy/store/release | NOT RUN | Not release-ready |
 
-Audit host detected Unity 6000.5.9f1, iOS module and Xcode 27.0. Package Manager reported URP requested 17.6.0 overridden by built-in 17.5.0 and transitive minimum overrides (searcher/Burst/performance tests). Manifest/lock were not intentionally changed: resolve/import and review before release. Do not treat these warnings as a passing dependency audit.
+Host: Unity 6000.5.9f1, iOS module, Xcode 27.0/iOS 27 SDK. Owner completed Unity activation and Xcode licence acceptance. Early sandbox/ILPP/licence attempts produced no test results and are superseded by the fresh successful test XML above. First export detected missing LFS payload; resolved by fetching all objects from a push-disabled Android remote and uploading to iOS origin.
+
+Package Manager reported URP requested 17.6.0 overridden by editor built-in 17.5.0 and transitive minimum overrides (searcher/Burst/performance tests). Manifest/lock were not intentionally changed. This editor behavior is documented rather than silently changing package pins; visual/device parity still requires QA. Generated Xcode, logs, caches, local IDE files and signing credentials are excluded from commits.
+
+Export warnings: five compressed-icon warnings for the inherited 512px development icon. Native Xcode compilation warns that Unity-generated IL2CPP commands use -mios-version-min=11.0 although Xcode application deployment target is 15.0. These are retained diagnostics, not hidden by suppression. Final icon quality and actual minimum-OS device behavior remain QA gates.

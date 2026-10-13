@@ -10,6 +10,8 @@ Status: MANUAL TEST REQUIRED for every device row until actually executed. Recor
 - Development reward is immediate FakeAdService. Non-development service is unavailable; no live ad/network integration is accepted or expected.
 
 ## Save/lifecycle matrix
+Unity documents iOS persistentDataPath as the app container's Documents directory. Keeping the bundle identifier stable preserves the update path; absolute container GUIDs must never be hardcoded. Source: https://docs.unity.com/en-us/engine/6000.5/script-reference/unityengine/application/persistentdatapath . This is API-contract confirmation, not a physical-device save pass.
+
 1. Fresh install: default progress/lives/boosters and settings; no login dependency.
 2. Make moves, change settings/use boosters, background then foreground; resume same live board within the same process. Repeat during transfer animation, completion, reward and settings.
 3. Background then terminate process and reopen: persisted meta-state restored; unfinished level starts from baseline board, completed level resumes at next level. Exact board/undo/shuffled seed resume is NOT implemented in Android baseline.
