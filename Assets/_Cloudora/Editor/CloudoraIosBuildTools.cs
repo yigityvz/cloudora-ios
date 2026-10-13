@@ -56,14 +56,14 @@ namespace Cloudora.Editor
             PlayerSettings.iOS.buildNumber = ReadBuildNumber(Environment.GetEnvironmentVariable("CLOUDORA_IOS_BUILD_NUMBER"));
             PlayerSettings.iOS.appInBackgroundBehavior = iOSAppInBackgroundBehavior.Suspend;
             PlayerSettings.iOS.appleDeveloperTeamID = string.Empty;
-            PlayerSettings.iOS.iOSManualSigningProvisioningProfileID = string.Empty;
+            PlayerSettings.iOS.iOSManualProvisioningProfileID = string.Empty;
             PlayerSettings.iOS.appleEnableAutomaticSigning = false;
             Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Cloudora/Art/cloudora-icon-512.png");
             if (icon == null) throw new BuildFailedException("Cloudora icon is missing.");
-            int[] sizes = PlayerSettings.GetIconSizesForTargetGroup(BuildTargetGroup.iOS, IconKind.Application);
+            int[] sizes = PlayerSettings.GetIconSizes(NamedBuildTarget.iOS, IconKind.Application);
             var icons = new Texture2D[sizes.Length];
             for (int i = 0; i < icons.Length; i++) icons[i] = icon;
-            PlayerSettings.SetIconsForTargetGroup(BuildTargetGroup.iOS, icons, IconKind.Application);
+            PlayerSettings.SetIcons(NamedBuildTarget.iOS, icons, IconKind.Application);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(GameplayScene, true) };
             AssetDatabase.SaveAssets();
         }
