@@ -54,3 +54,17 @@ An unsigned build cannot install on a physical phone and does not validate signi
 
 ## Sandbox troubleshooting
 If the automated editor cannot reach its IL Post Processor socket, no test/build pass is established. Close only the affected batch Unity process in Activity Monitor and run the commands above from Terminal outside the Codex sandbox. Do not delete a UnityLockfile while the owning process is alive. Retain Logs/ios-test.log and Logs/ios-editmode.xml for inspection.
+
+## Signing from a synced Documents checkout
+If codesign reports “resource fork, Finder information, or similar detritus not allowed”, a file-provider may be reattaching Finder metadata to generated frameworks. On the audit host, signing succeeded with build products outside the synced Documents tree:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
+  -project Builds/iOS/Cloudora/Unity-iPhone.xcodeproj -scheme Unity-iPhone \
+  -configuration Debug -destination 'generic/platform=iOS' \
+  -derivedDataPath Builds/iOS/DerivedData \
+  CONFIGURATION_BUILD_DIR=/private/tmp/cloudora-ios-device-products \
+  -allowProvisioningUpdates build
+```
+
+Set the Team in the ignored generated Xcode project first. The temporary product is `/private/tmp/cloudora-ios-device-products/Cloudora.app`; it can be removed by macOS and is not a durable release artifact. This changes output location only; no signing identities, profiles or credentials are committed. For Xcode GUI builds use a local, non-synced Build Products Path if this issue recurs.
