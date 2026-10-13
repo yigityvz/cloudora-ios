@@ -54,7 +54,7 @@ namespace Cloudora.Editor
             // Preserve source deployment baseline; store/device policy remains owner-reviewed.
             PlayerSettings.iOS.targetOSVersionString = "15.0";
             PlayerSettings.iOS.buildNumber = ReadBuildNumber(Environment.GetEnvironmentVariable("CLOUDORA_IOS_BUILD_NUMBER"));
-            PlayerSettings.iOS.exitOnSuspend = false;
+            PlayerSettings.iOS.appInBackgroundBehavior = iOSAppInBackgroundBehavior.Suspend;
             PlayerSettings.iOS.appleDeveloperTeamID = string.Empty;
             PlayerSettings.iOS.iOSManualSigningProvisioningProfileID = string.Empty;
             PlayerSettings.iOS.appleEnableAutomaticSigning = false;
