@@ -11,6 +11,7 @@ namespace Cloudora.Services
         [SerializeField] private AudioClip completeClip;
 
         private AudioSource _source;
+        private readonly IHapticFeedback _haptics = new HapticFeedback();
 
         public bool SoundEnabled
         {
@@ -40,7 +41,7 @@ namespace Cloudora.Services
             Play(invalidClip);
             if (HapticsEnabled && Application.isMobilePlatform)
             {
-                Handheld.Vibrate();
+                _haptics.InvalidMove();
             }
         }
 
