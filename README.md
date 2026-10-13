@@ -1,26 +1,17 @@
-# Cloudora
+# Cloudora for iOS
 
-**Fix the sky. Restore the world.** Cloudora is an Android-first, portrait, cozy weather-sorting puzzle built in Unity 6000.5.9f1 (Universal 2D). Tap a source cloud and then a compatible destination; matching top weather moves as a group. No level countdown or drag gesture is required.
+**Fix the sky. Restore the world.** Portrait weather-sorting puzzle ported from the complete Cloudora Android project. Existing gameplay, first 15 authored levels, deterministic generated levels, worlds/restoration, modifiers, lives, boosters, save schema and runtime visuals are retained.
 
-![Cloudora feature art](StoreAssets/Play/cloudora-feature-1024x500.png)
+Unity **6000.5.9f1** (Universal 2D). Open this `cloudora-ios` root in Unity Hub, load `Assets/_Cloudora/Scenes/02_Gameplay.unity`, then use **Cloudora → Build → iOS Development Xcode Project**. Open the generated `Builds/iOS/Cloudora/Unity-iPhone.xcodeproj` in Xcode, select your local Team under Signing & Capabilities and run on a paired development iPhone.
 
-## Product and architecture
+- [Build/setup/signing instructions](Docs/IOS_BUILD.md)
+- [Physical iPhone QA and open release gates](Docs/IOS_DEVICE_QA.md)
+- [Architecture and preserved baseline limitations](Docs/IOS_ARCHITECTURE.md)
+- [Fresh validation status](Docs/IOS_STATUS.md)
+- [Original Android README](Docs/ANDROID_BASELINE_README.md) and [historical progress](Docs/PROJECT_PROGRESS.md)
 
-- Fifteen authored onboarding levels lead into seed-reproducible generated puzzles. The generator reverse-shuffles solved boards and records a legal solution, then validates invariants before accepting a level.
-- Cloud capacity progresses from four to seven slots. Thirteen world definitions span levels 1–400, with restoration milestones, new weather, modifiers, and difficulty waves.
-- Rule logic lives in pure C# state and move classes; Unity cloud views, animations, responsive board layout, HUD, world screen, and settings sit around that core. Modifier rules are registered independently of the views.
-- Local JSON save data includes progress, life regeneration, tutorial flags, settings and boosters, with schema migration and backup recovery. No account, backend, or cloud-save service is required for the puzzle loop.
-- Analytics and advertising are behind interfaces. This repository binds fake ads and a credential-free analytics fallback. Real AdMob is not enabled; no public release is authorized.
+Run `./Build-iOS.sh test` for the original EditMode suite plus iOS regression coverage; `./Build-iOS.sh validate` for the original 10,000-level validation. `./Build-iOS.sh configure` persists iOS settings; `./Build-iOS.sh build` exports a development Xcode project. Close other Unity instances for this project first. Generated files, logs and signing credentials are excluded from Git.
 
-## Run and test
+Android baseline commit `a18a3e49d235e12f452e2a3467b473759d096393` and history are retained. The sibling Android reference remains unchanged. This repo's only push origin is https://github.com/yigityvz/cloudora-ios.git.
 
-1. Open the project in Unity 6000.5.9f1 and load `Assets/_Cloudora/Scenes/02_Gameplay.unity`.
-2. Enter Play Mode to inspect the initial menu, one-finger puzzle loop, world and settings surfaces.
-3. Run EditMode tests in Unity Test Runner. `Cloudora/Validate 10,000 Levels` runs the deterministic content stress check.
-4. Use `Cloudora/Build/Android Development APK` for an internal build. See [Android build and device QA](Docs/ANDROID_BUILD.md) for the ASCII-only path requirement and open physical-device checks.
-
-The latest fresh EditMode result passed 26/26 tests after package cleanup; a separate content stress check passed 10,000/10,000 generated-level validations. These checks do not substitute for Android PlayMode/device smoke tests or prove real-world difficulty quality. See [phase progress](Docs/PROJECT_PROGRESS.md) and the [release checklist](Docs/RELEASE_CHECKLIST.md) for exact status and blockers.
-
-## Store/portfolio package
-
-The [store-art pack](StoreAssets/README.md) contains an original icon and feature illustration, plus exact-size PNG candidates; [English and Turkish store copy](StoreAssets/STORE_COPY.md) is a draft. These are not gameplay screenshots. Authentic Android screenshots, release signing, privacy-policy approval, and publication remain separate owner-controlled gates. See the [privacy release review](Docs/PRIVACY_RELEASE_REVIEW.md).
+Development uses fake ads; non-development uses an unavailable AdMob stub. No real Firebase/AdMob configuration is added. Device QA, final store art/launch screen, Apple privacy review, signing and App Store publication remain open. Read the current status before interpreting any historical Android PASS as iOS evidence.
