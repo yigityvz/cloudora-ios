@@ -2,12 +2,17 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+#if UNITY_ANDROID
 using UnityEditor.Android;
+#endif
 using UnityEngine;
 
 namespace Cloudora.Editor
 {
-    public sealed class CloudoraAndroidManifestPostprocessor : IPostGenerateGradleAndroidProject
+    public sealed class CloudoraAndroidManifestPostprocessor
+#if UNITY_ANDROID
+        : IPostGenerateGradleAndroidProject
+#endif
     {
         private static readonly XNamespace AndroidNamespace = "http://schemas.android.com/apk/res/android";
         public int callbackOrder => 1000;
