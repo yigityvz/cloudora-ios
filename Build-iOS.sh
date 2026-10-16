@@ -26,7 +26,8 @@ if [[ "$mode" == test ]]; then
   /usr/bin/python3 - "$project_dir/Logs/ios-editmode.xml" <<'CHECK'
 import sys, xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
-assert root.get('result') == 'Passed' and int(root.get('total', '0')) > 0, root.attrib
+assert int(root.get('passed', '0')) > 0 and int(root.get('failed', '0')) == 0 and int(root.get('inconclusive', '0')) == 0, root.attrib
+assert int(root.get('total', '0')) == int(root.get('passed', '0')) + int(root.get('skipped', '0')), root.attrib
 print(root.attrib)
 CHECK
 fi

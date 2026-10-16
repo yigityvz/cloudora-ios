@@ -1,3 +1,5 @@
+> Historical audit of the 2026-10-13 baseline. Superseded for current runtime behavior by Android `cloudora-bahadir` / `d7c9416`, `Docs/PROJE_HAFIZASI.md`, `crVersion.md` and `Docs/IOS_STATUS.md`. The old native haptic adapter and layout patch are not in the current port.
+
 # iOS port audit — 2026-10-13
 
 Baseline: Android `codex/phase2-15`, `a18a3e49d235e12f452e2a3467b473759d096393`. Full history retained; Android reference checkout is unchanged. iOS origin is https://github.com/yigityvz/cloudora-ios.git.

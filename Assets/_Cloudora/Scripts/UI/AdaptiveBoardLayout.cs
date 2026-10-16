@@ -10,8 +10,6 @@ namespace Cloudora.UI
         private int _cloudCount;
         private int _capacity;
         private Vector2 _lastSize;
-        private Rect _lastSafeArea;
-        private Vector2Int _lastScreen;
 
         public void Configure(int cloudCount, int capacity)
         {
@@ -27,8 +25,7 @@ namespace Cloudora.UI
 
         private void Update()
         {
-            if (_rect != null && (_rect.rect.size != _lastSize || _lastSafeArea != Screen.safeArea ||
-                _lastScreen != new Vector2Int(Screen.width, Screen.height))) Apply();
+            if (_rect != null && _rect.rect.size != _lastSize) Apply();
         }
 
         private void Apply()
@@ -37,8 +34,6 @@ namespace Cloudora.UI
             (Vector2 safeMin, Vector2 safeMax) = SafeAreaFitter.CalculateAnchors(Screen.safeArea, new Vector2(Screen.width, Screen.height));
             _rect.anchorMin = new Vector2(Mathf.Lerp(safeMin.x, safeMax.x, 0.05f), Mathf.Lerp(safeMin.y, safeMax.y, 0.2f));
             _rect.anchorMax = new Vector2(Mathf.Lerp(safeMin.x, safeMax.x, 0.95f), Mathf.Lerp(safeMin.y, safeMax.y, 0.82f));
-            _lastSafeArea = Screen.safeArea;
-            _lastScreen = new Vector2Int(Screen.width, Screen.height);
             _lastSize = _rect.rect.size;
             LayoutMetrics metrics = Calculate(_lastSize, _cloudCount, _capacity);
             _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;

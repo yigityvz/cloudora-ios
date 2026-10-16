@@ -27,27 +27,27 @@ namespace Cloudora.UI
 
         private void Build(string world, int level, Action onWorld, Func<bool> sound, Action<bool> setSound, Func<bool> haptics, Action<bool> setHaptics)
         {
-            _menu = Panel(transform, "MainMenu", new Color(0.91f, 0.97f, 1f, 0.98f));
-            Label(_menu.transform, "CLOUDORA", 76, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.9f));
-            Label(_menu.transform, "Fix the sky. Restore the world.", 30, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.77f));
-            _progressLabel = Label(_menu.transform, string.Empty, 34, new Vector2(0.12f, 0.5f), new Vector2(0.88f, 0.62f));
+            _menu = Panel(transform, "MainMenu", new Color(0.91f, 0.97f, 1f, 0.98f), out Transform menuCard);
+            Label(menuCard, "CLOUDORA", 76, new Vector2(0.1f, 0.76f), new Vector2(0.9f, 0.9f));
+            Label(menuCard, "Fix the sky. Restore the world.", 30, new Vector2(0.1f, 0.68f), new Vector2(0.9f, 0.77f));
+            _progressLabel = Label(menuCard, string.Empty, 34, new Vector2(0.12f, 0.5f), new Vector2(0.88f, 0.62f));
             SetProgress(world, level);
-            Button(_menu.transform, "CONTINUE", new Vector2(0f, -80f), () => _menu.SetActive(false));
-            Button(_menu.transform, "WORLD", new Vector2(0f, -190f), () => { _menu.SetActive(false); onWorld?.Invoke(); });
-            Button(_menu.transform, "SETTINGS", new Vector2(0f, -300f), () => _settings.SetActive(true));
-            _settings = Panel(transform, "Settings", new Color(0.96f, 0.98f, 1f, 0.99f));
-            Label(_settings.transform, "SETTINGS", 58, new Vector2(0.1f, 0.72f), new Vector2(0.9f, 0.88f));
-            Button soundButton = Button(_settings.transform, string.Empty, new Vector2(0f, 100f), null);
+            Button(menuCard, "CONTINUE", new Vector2(0f, -80f), () => _menu.SetActive(false));
+            Button(menuCard, "WORLD", new Vector2(0f, -190f), () => { _menu.SetActive(false); onWorld?.Invoke(); });
+            Button(menuCard, "SETTINGS", new Vector2(0f, -300f), () => _settings.SetActive(true));
+            _settings = Panel(transform, "Settings", new Color(0.96f, 0.98f, 1f, 0.99f), out Transform settingsCard);
+            Label(settingsCard, "SETTINGS", 58, new Vector2(0.1f, 0.72f), new Vector2(0.9f, 0.88f));
+            Button soundButton = Button(settingsCard, string.Empty, new Vector2(0f, 100f), null);
             soundButton.onClick.AddListener(() => { setSound(!sound()); SetToggleLabel(soundButton, "SOUND", sound()); });
             SetToggleLabel(soundButton, "SOUND", sound());
-            Button hapticsButton = Button(_settings.transform, string.Empty, new Vector2(0f, -10f), null);
+            Button hapticsButton = Button(settingsCard, string.Empty, new Vector2(0f, -10f), null);
             hapticsButton.onClick.AddListener(() => { setHaptics(!haptics()); SetToggleLabel(hapticsButton, "HAPTICS", haptics()); });
             SetToggleLabel(hapticsButton, "HAPTICS", haptics());
             if (ReleaseConfiguration.HasPrivacyPolicy)
-                Button(_settings.transform, "PRIVACY", new Vector2(0f, -120f), () => Application.OpenURL(ReleaseConfiguration.Current.privacyPolicyUrl));
+                Button(settingsCard, "PRIVACY", new Vector2(0f, -120f), () => Application.OpenURL(ReleaseConfiguration.Current.privacyPolicyUrl));
             if (ReleaseConfiguration.HasSupportEmail)
-                Button(_settings.transform, "SUPPORT", new Vector2(0f, -230f), () => Application.OpenURL("mailto:" + ReleaseConfiguration.Current.supportEmail));
-            Button(_settings.transform, "CLOSE", new Vector2(0f, -350f), () => _settings.SetActive(false));
+                Button(settingsCard, "SUPPORT", new Vector2(0f, -230f), () => Application.OpenURL("mailto:" + ReleaseConfiguration.Current.supportEmail));
+            Button(settingsCard, "CLOSE", new Vector2(0f, -350f), () => _settings.SetActive(false));
             _settings.SetActive(false);
         }
 
@@ -56,14 +56,17 @@ namespace Cloudora.UI
             button.GetComponentInChildren<Text>().text = $"{label}: {(enabled ? "ON" : "OFF")}";
         }
 
-        private static GameObject Panel(Transform parent, string name, Color color)
+        private static GameObject Panel(Transform parent, string name, Color color, out Transform content)
         {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(parent, false);
-            RectTransform rect = go.GetComponent<RectTransform>();
+            // Tam ekran opak gökyüzü: panel açıkken arkadaki oyun görünmez ve dokunulamaz.
+            GameObject go = CloudoraVisuals.CreateBackdrop(parent, name);
+            var card = new GameObject("Card", typeof(RectTransform), typeof(Image));
+            card.transform.SetParent(go.transform, false);
+            RectTransform rect = card.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.08f, 0.12f); rect.anchorMax = new Vector2(0.92f, 0.9f); rect.offsetMin = rect.offsetMax = Vector2.zero;
-            Image image = go.GetComponent<Image>(); image.sprite = CloudoraVisuals.RoundedPanel; image.type = Image.Type.Sliced; image.color = color;
-            go.AddComponent<Shadow>().effectColor = new Color(0.2f, 0.35f, 0.5f, 0.14f);
+            Image image = card.GetComponent<Image>(); image.sprite = CloudoraVisuals.RoundedPanel; image.type = Image.Type.Sliced; image.color = color;
+            Shadow shadow = card.AddComponent<Shadow>(); shadow.effectColor = new Color(0.08f, 0.18f, 0.35f, 0.25f); shadow.effectDistance = new Vector2(0f, -10f);
+            content = card.transform;
             return go;
         }
 

@@ -1,6 +1,8 @@
+> Current baseline: `cloudora-bahadir` / `d7c9416` (2026-10-16). Runtime, scenes, tests and content are identical to Android. The earlier 2026-10-13 device test does not validate this baseline.
+
 # Cloudora iOS development build
 
-This is a port of Android baseline a18a3e4, not a new game or a release-approved product. Use Unity 6000.5.9f1 (b57deb96f08d), macOS, iOS Build Support and Xcode. See IOS_ARCHITECTURE.md for preserved behavior and known limitations; IOS_DEVICE_QA.md for acceptance.
+This is the behavior-preserving iOS port of Android cloudora-bahadir / d7c9416 (v3.2). Use Unity 6000.5.9f1 (b57deb96f08d), macOS, iOS Build Support and Xcode. See IOS_STATUS.md for current evidence and PROJE_HAFIZASI.md for source behavior. IOS_ARCHITECTURE.md is a historical audit; IOS_DEVICE_QA.md distinguishes the old device run from current pending QA.
 
 ## Setup
 Git LFS is required: this history stores PNG assets as LFS pointers. On a new Mac install Git LFS (for example `brew install git-lfs`), then in this iOS repository run `git lfs install --local` and `git lfs pull origin`. Verify `git lfs fsck` and that the icon is a real PNG before opening Unity. The audit host uses an official Git LFS 3.8.0 binary in the sibling work/ folder with repository-local filters/hooks; keep that tool folder until installing Git LFS normally. No global Git config or Android checkout was modified. All six historical LFS objects were copied to iOS origin.
@@ -29,7 +31,7 @@ Bundle com.yigityvz.cloudora; marketing version 0.1.0; build 1 by default; devic
 
 Official versioned build guide: https://docs.unity.com/en-us/engine/6000.5/manual/platform-specific/iphone/ios-building-and-delivering . Check current Apple submission requirements separately before App Store work; this pipeline exports development only.
 
-Android build menu implementation is compiled only under UNITY_ANDROID. Manifest XML filtering remains available to shared tests; its Android callback/interface is conditionally compiled. Android build scripts/history remain as provenance, not the iOS workflow. Shared runtime services are preserved. Native iOS warning haptic is isolated behind IHapticFeedback and only called on invalid moves with Haptics enabled. No SDK, real ad, Firebase configuration, tracking permission, certificate or Team ID is added.
+Android build menu implementation is compiled only under UNITY_ANDROID. Manifest XML filtering remains available to shared tests; its Android callback/interface is conditionally compiled. Android build scripts/history remain as provenance, not the iOS workflow. Shared runtime services are preserved. The Android source GameFeedbackService is preserved, including Unity Handheld.Vibrate; the earlier custom native haptic adapter is removed. No runtime UI/layout patch from the earlier port is carried over. No SDK, real ad, Firebase configuration, tracking permission, certificate or Team ID is added.
 
 ## Xcode and iPhone — owner steps
 1. Open Xcode; complete any first-launch component installation and licence prompts.
@@ -68,3 +70,15 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
 ```
 
 Set the Team in the ignored generated Xcode project first. The temporary product is `/private/tmp/cloudora-ios-device-products/Cloudora.app`; it can be removed by macOS and is not a durable release artifact. This changes output location only; no signing identities, profiles or credentials are committed. For Xcode GUI builds use a local, non-synced Build Products Path if this issue recurs.
+
+## v3.2 calibration (read-only)
+The original 10,000-level validator exercises the legacy generator. For this source, EditMode tests also cover the authored v3 boards, solver and recovery. To measure all current 1–100 boards without regenerating content:
+
+```sh
+/Applications/Unity/Hub/Editor/6000.5.9f1/Unity.app/Contents/MacOS/Unity \
+  -batchmode -nographics -projectPath "$PWD" -buildTarget iOS \
+  -executeMethod Cloudora.Editor.V3LevelTool.RunCalibrationReportBatch \
+  -logFile Logs/ios-v32-calibration.log
+```
+
+The method exits itself. Do not run GenerateLevelDataBatch as part of a platform-only port.

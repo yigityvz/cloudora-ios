@@ -34,9 +34,7 @@ namespace Cloudora.Editor
         [MenuItem("Cloudora/Build/Configure iOS Development")]
         public static void Configure()
         {
-            PlayerSettings.companyName = "YigitYvz";
-            PlayerSettings.productName = "Cloudora";
-            PlayerSettings.bundleVersion = "0.1.0";
+            // Product identity/version and all gameplay assets remain as imported from Android.
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.iOS, "com.yigityvz.cloudora");
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.iOS, ScriptingImplementation.IL2CPP);
             PlayerSettings.SetArchitecture(NamedBuildTarget.iOS, 1); // ARM64

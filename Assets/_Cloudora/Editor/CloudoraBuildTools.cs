@@ -35,11 +35,14 @@ namespace Cloudora.Editor
         private static void Build(bool release, bool play)
         {
             SigningState signingState = CaptureSigningState();
+            string originalProductName = PlayerSettings.productName;
+            string originalApplicationId = PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android);
             BuildReport report = null;
             string output = null;
             try
             {
                 ConfigureAndroid(release, play);
+                ApplyDevIdentityOverride(release);
                 string fallback = Path.Combine("Builds", "Android", play ? "Cloudora-0.1.0-play.aab" : release ? "Cloudora-0.1.0.aab" : "Cloudora-dev.apk");
                 output = Environment.GetEnvironmentVariable("CLOUDORA_BUILD_OUTPUT") ?? fallback;
                 string directory = Path.GetDirectoryName(output);
@@ -57,6 +60,9 @@ namespace Cloudora.Editor
             finally
             {
                 RestoreSigningState(signingState);
+                // Geçersiz kılma ProjectSettings'e kalıcı yazılmasın.
+                PlayerSettings.productName = originalProductName;
+                PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, originalApplicationId);
             }
 
             Debug.Log($"CLOUDORA_BUILD result={report.summary.result} output={Path.GetFullPath(output)} size={report.summary.totalSize} warnings={report.summary.totalWarnings} errors={report.summary.totalErrors}");
@@ -83,6 +89,22 @@ namespace Cloudora.Editor
             EditorUserBuildSettings.buildAppBundle = appBundle;
             if (appBundle) EditorUserBuildSettings.androidCreateSymbols = AndroidCreateSymbols.Public;
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(GameplayScene, true) };
+        }
+
+        // Yalnızca development APK: aynı telefonda sürümleri yan yana kurmak için paket adı ve görünen ad
+        // (ör. CLOUDORA_DEV_APP_ID=com.yigityvz.cloudora.v2, CLOUDORA_DEV_PRODUCT_NAME="Cloudora v2").
+        private static void ApplyDevIdentityOverride(bool release)
+        {
+            string applicationId = Environment.GetEnvironmentVariable("CLOUDORA_DEV_APP_ID");
+            string productName = Environment.GetEnvironmentVariable("CLOUDORA_DEV_PRODUCT_NAME");
+            if (string.IsNullOrWhiteSpace(applicationId) && string.IsNullOrWhiteSpace(productName)) return;
+            if (release)
+                throw new BuildFailedException("CLOUDORA_DEV_APP_ID / CLOUDORA_DEV_PRODUCT_NAME are only allowed for development APK builds.");
+            if (!string.IsNullOrWhiteSpace(applicationId))
+                PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, applicationId.Trim());
+            if (!string.IsNullOrWhiteSpace(productName))
+                PlayerSettings.productName = productName.Trim();
+            Debug.Log($"CLOUDORA_BUILD dev identity override id={PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android)} name={PlayerSettings.productName}");
         }
 
         private static int ReadVersionCode()

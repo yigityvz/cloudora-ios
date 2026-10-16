@@ -6,6 +6,7 @@ namespace Cloudora.UI
 {
     public sealed class WorldScreenController : MonoBehaviour
     {
+        private GameObject _root;
         private GameObject _panel;
         private Image _land;
         private Text _title;
@@ -18,11 +19,17 @@ namespace Cloudora.UI
             SafeAreaFitter.Attach(host);
             var controller = host.AddComponent<WorldScreenController>();
             controller.Build();
-            controller._panel.SetActive(false);
+            controller._root.SetActive(false);
             return controller;
         }
 
-        public void Toggle() => _panel.SetActive(!_panel.activeSelf);
+        public void Toggle()
+        {
+            bool show = !_root.activeSelf;
+            // Oyun butonlarının (GameplayOverlay) üstünde görünsün.
+            if (show) transform.SetAsLastSibling();
+            _root.SetActive(show);
+        }
 
         public void Refresh(WorldDefinition world, int completedLevel)
         {
@@ -36,8 +43,14 @@ namespace Cloudora.UI
 
         private void Build()
         {
+            // Tam ekran opak gökyüzü; herhangi bir yere dokunmak ekranı kapatır.
+            _root = CloudoraVisuals.CreateBackdrop(transform, "WorldBackdrop");
+            _root.AddComponent<Button>().onClick.AddListener(Toggle);
             _panel = new GameObject("WorldPanel", typeof(RectTransform), typeof(Image), typeof(Button));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(_root.transform, false);
+            Shadow shadow = _panel.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0.08f, 0.18f, 0.35f, 0.25f);
+            shadow.effectDistance = new Vector2(0f, -10f);
             RectTransform rect = _panel.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.08f, 0.15f);
             rect.anchorMax = new Vector2(0.92f, 0.85f);

@@ -1,3 +1,5 @@
+> Current baseline (2026-10-16): Android `cloudora-bahadir` / `d7c9416`. Physical iPhone QA has NOT RUN for this baseline. The 2026-10-13 evidence below belongs only to the old build. Current source behavior supersedes old checklist assumptions: Shuffle reorders one selected cloud; Restart was removed; Retry costs one life outside levels 1–5; fail recovery uses an ad or 40 coins and restores the newest solvable state; failed boards persist, ordinary unfinished boards restart. Test these source behaviors without changing save files. First 100 levels have no modifiers.
+
 # Physical iPhone acceptance
 
 Status: Initial physical smoke check passed as recorded below; remaining matrix items require manual execution. Record date, device/iOS, commit, build number, install method, result and reproduction/log evidence. Simulator/layout math does not prove touch, haptics, audio, performance, lifecycle or signing.
