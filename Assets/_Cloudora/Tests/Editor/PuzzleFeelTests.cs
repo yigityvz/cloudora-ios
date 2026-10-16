@@ -163,15 +163,6 @@ namespace Cloudora.Tests.Editor
             Object.DestroyImmediate(root);
         }
 
-        [Test]
-        public void ManifestFilterRemovesOnlyInternetPermission()
-        {
-            const string manifest = "<manifest xmlns:android='http://schemas.android.com/apk/res/android'><uses-permission android:name='android.permission.INTERNET'/><uses-permission android:name='android.permission.VIBRATE'/><application/></manifest>";
-            string filtered = CloudoraAndroidManifestPostprocessor.RemoveInternetPermission(manifest);
-            Assert.That(filtered, Does.Not.Contain("android.permission.INTERNET"));
-            Assert.That(filtered, Does.Contain("android.permission.VIBRATE"));
-        }
-
         private static string BoardKey(LevelDefinition definition)
         {
             var parts = new System.Collections.Generic.List<string>();

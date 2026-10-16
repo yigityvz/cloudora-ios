@@ -1,14 +1,12 @@
-> Current baseline: `cloudora-bahadir` / `d7c9416` (2026-10-16). Runtime, scenes, tests and content are identical to Android. The earlier 2026-10-13 device test does not validate this baseline.
-
 # Cloudora iOS development build
 
-This is the behavior-preserving iOS port of Android cloudora-bahadir / d7c9416 (v3.2). Use Unity 6000.5.9f1 (b57deb96f08d), macOS, iOS Build Support and Xcode. See IOS_STATUS.md for current evidence and PROJE_HAFIZASI.md for source behavior. IOS_ARCHITECTURE.md is a historical audit; IOS_DEVICE_QA.md distinguishes the old device run from current pending QA.
+This repository builds Cloudora v3.2 for iPhone. Use Unity 6000.5.9f1 (b57deb96f08d), macOS, iOS Build Support and Xcode. See IOS_STATUS.md for current evidence and PROJE_HAFIZASI.md for source behavior. IOS_ARCHITECTURE.md describes the project structure; IOS_DEVICE_QA.md tracks device acceptance.
 
 ## Setup
-Git LFS is required: this history stores PNG assets as LFS pointers. On a new Mac install Git LFS (for example `brew install git-lfs`), then in this iOS repository run `git lfs install --local` and `git lfs pull origin`. Verify `git lfs fsck` and that the icon is a real PNG before opening Unity. The audit host uses an official Git LFS 3.8.0 binary in the sibling work/ folder with repository-local filters/hooks; keep that tool folder until installing Git LFS normally. No global Git config or Android checkout was modified. All six historical LFS objects were copied to iOS origin.
+Git LFS is required: this history stores PNG assets as LFS pointers. On a new Mac install Git LFS (for example `brew install git-lfs`), then in this iOS repository run `git lfs install --local` and `git lfs pull origin`. Verify `git lfs fsck` and that the icon is a real PNG before opening Unity. The audit host uses an official Git LFS 3.8.0 binary in the sibling work/ folder with repository-local filters/hooks; keep that tool folder until installing Git LFS normally. No global Git configuration is required by this repository.
 
 1. Unity Hub → Installs → 6000.5.9f1 → gear/Manage → Add modules → iOS Build Support → Install (already detected on the audit host).
-2. Unity Hub → Projects → Add → Add project from disk → select the sibling `cloudora-ios` root. Never select cloudora-android for port work.
+2. Unity Hub → Projects → Add → Add project from disk → select the sibling `cloudora-ios` root. Use this repository as the project root.
 3. Open Assets/_Cloudora/Scenes/02_Gameplay.unity. Allow package import; investigate any Console errors before building.
 4. File → Build Profiles → iOS → Switch Platform. Use Cloudora → Build → Configure iOS Development to persist settings without exporting.
 
@@ -31,7 +29,7 @@ Bundle com.yigityvz.cloudora; marketing version 0.1.0; build 1 by default; devic
 
 Official versioned build guide: https://docs.unity.com/en-us/engine/6000.5/manual/platform-specific/iphone/ios-building-and-delivering . Check current Apple submission requirements separately before App Store work; this pipeline exports development only.
 
-Android build menu implementation is compiled only under UNITY_ANDROID. Manifest XML filtering remains available to shared tests; its Android callback/interface is conditionally compiled. Android build scripts/history remain as provenance, not the iOS workflow. Shared runtime services are preserved. The Android source GameFeedbackService is preserved, including Unity Handheld.Vibrate; the earlier custom native haptic adapter is removed. No runtime UI/layout patch from the earlier port is carried over. No SDK, real ad, Firebase configuration, tracking permission, certificate or Team ID is added.
+Only iOS build tooling is included. Shared gameplay, UI, services and assets retain their existing behavior. No SDK, tracking permission, certificate or Team ID is added.
 
 ## Xcode and iPhone — owner steps
 1. Open Xcode; complete any first-launch component installation and licence prompts.
