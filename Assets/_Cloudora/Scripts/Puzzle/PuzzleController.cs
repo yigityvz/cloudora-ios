@@ -34,6 +34,7 @@ namespace Cloudora.Puzzle
         private BoosterManager _boosterManager;
         private CoinWallet _coinWallet;
         private int _moveCount;
+        private int _completionReward;
         private int _shuffleUseCount;
         private int _baseCloudCount;
         private const int MaxExtraCloudsPerLevel = 2;
@@ -52,6 +53,11 @@ namespace Cloudora.Puzzle
         private GameObject _shuffleCancelArea;
         private LevelDefinition _currentLevel;
         private const int SolverStateLimit = 200000;
+        private Coroutine _solvabilityRoutine;
+        private int _boardRevision;
+        private int _uiLives=int.MinValue,_uiCoins=int.MinValue,_uiCompleted=int.MinValue,_uiSeconds=int.MinValue;
+        private bool _resourceRefreshQueued=true;
+        private readonly Dictionary<string,SolveStatus> _solvabilityCache=new();
 
         private sealed class PuzzleSnapshot
         {
@@ -74,7 +80,12 @@ namespace Cloudora.Puzzle
             _saveService = new LocalJsonSaveService();
             _saveData = _saveService.Load();
             _analytics = new FirebaseAnalyticsService();
+#if CLOUDORA_DEVICE_QA
+            // Local device QA keeps the existing test rewards without a development watermark.
+            _adService = new FakeAdService(_analytics);
+#else
             _adService = Debug.isDebugBuild ? new FakeAdService(_analytics) : new AdMobAdService();
+#endif
             _adPolicy = new AdPlacementPolicy();
             _analytics.Track(AnalyticsEvents.GameStarted, Params("save_schema", _saveData.schemaVersion));
             int startLevel = useDebugStartLevel ? debugStartLevel : _saveData.currentLevel;
@@ -87,11 +98,12 @@ namespace Cloudora.Puzzle
             _feedback.SoundEnabled = _saveData.soundEnabled;
             _feedback.HapticsEnabled = _saveData.hapticsEnabled;
             _worldScreen = WorldScreenController.Create(canvas);
+            _worldScreen.SetPlayAction(()=>{_mainMenu?.Hide();if(_isCompleted)HandleContinue();else if(_attemptBlocked)_overlay.ShowBlock("Canın Kalmadı","Yeni canın dolmasını bekle.");});
             _overlay = GameplayOverlay.Create(canvas, Undo, HandleContinue,
                 () => { CancelShuffleSelection(); _worldScreen.Toggle(); },
                 UseExtraCloud, UseSafeShuffle,
-                () => { CancelShuffleSelection(); _mainMenu?.Show(); },
-                RetryAfterFail, ContinueWithAd, ContinueWithCoins, WatchAdForLife);
+                ReturnHome,
+                RetryAfterFail, ContinueWithAd, ContinueWithCoins, WatchAdForLife, () => _mainMenu?.ShowSettings());
             _overlay.SetCoins(_coinWallet.Coins);
             _shuffleCancelArea = CreateShuffleCancelArea();
             _boardLayout = boardRoot.GetComponent<AdaptiveBoardLayout>();
@@ -100,7 +112,7 @@ namespace Cloudora.Puzzle
             RestoreFailState();
             _mainMenu = MainMenuController.Create(canvas, _currentLevel.worldId, _currentLevel.levelId, _worldScreen.Toggle,
                 () => _feedback.SoundEnabled, value => { _feedback.SoundEnabled = value; SaveProgress(); },
-                () => _feedback.HapticsEnabled, value => { _feedback.HapticsEnabled = value; SaveProgress(); });
+                () => _feedback.HapticsEnabled, value => { _feedback.HapticsEnabled = value; SaveProgress(); }, WatchAdForLife);
         }
 
         private void OnApplicationPause(bool paused)
@@ -122,8 +134,16 @@ namespace Cloudora.Puzzle
                 SaveProgress();
             }
             System.TimeSpan remaining = _lifeManager.TimeUntilNext(now);
-            string countdown = remaining == System.TimeSpan.Zero ? string.Empty : $"{(int)remaining.TotalMinutes:00}:{remaining.Seconds:00}";
-            _overlay.SetLives(_lifeManager.Lives, countdown);
+            int seconds=(int)remaining.TotalSeconds;
+            if(_resourceRefreshQueued||_uiLives!=_lifeManager.Lives||_uiCoins!=_coinWallet.Coins||_uiCompleted!=_saveData.highestCompletedLevel||_uiSeconds!=seconds)
+            {
+                _resourceRefreshQueued=false;_uiLives=_lifeManager.Lives;_uiCoins=_coinWallet.Coins;_uiCompleted=_saveData.highestCompletedLevel;_uiSeconds=seconds;
+                string countdown = remaining == System.TimeSpan.Zero ? string.Empty : $"{(int)remaining.TotalMinutes:00}:{remaining.Seconds:00}";
+                _overlay.SetLives(_lifeManager.Lives, countdown);
+                _worldScreen?.SetResources(_coinWallet.Coins, _lifeManager.Lives, countdown);
+                _mainMenu?.SetResources(_coinWallet.Coins, _lifeManager.Lives, countdown, _saveData.highestCompletedLevel);
+            }
+            _overlay.SetBusy(_inputLocked);
             if (_failed) _overlay.ShowFail(CurrentFailOptions()); // can yenilenince "Retry" açılır
         }
 
@@ -196,14 +216,14 @@ namespace Cloudora.Puzzle
         {
             if (_lifeManager.Lives >= LifeManager.MaxLives)
             {
-                _overlay.ShowBlock("Lives Full", $"You already have {LifeManager.MaxLives} lives.");
+                _overlay.ShowBlock("Canların Dolu", $"Zaten {LifeManager.MaxLives} canın var.");
                 return;
             }
             RequestReward(RewardedPlacement.Life, () =>
             {
                 _lifeManager.Grant(1);
                 _attemptBlocked = false;
-            }, "Life Restored", "+1 life.");
+            }, "Can Yenilendi", "+1 can kazandın.");
         }
 
         private void ContinueWithAd()
@@ -212,7 +232,7 @@ namespace Cloudora.Puzzle
             _adService.ShowRewarded(RewardedPlacement.Continue, success =>
             {
                 if (success) ResumeFromLastSolvable("ad");
-                else _overlay.ShowBlock("Reward Unavailable", "The reward could not be completed.");
+                else _overlay.ShowBlock("Ödül Alınamadı", "Ödül tamamlanamadı. Biraz sonra tekrar dene.");
             });
         }
 
@@ -262,6 +282,7 @@ namespace Cloudora.Puzzle
         public void LoadLevel(int levelNumber)
         {
             _progression.DebugJump(levelNumber);
+            levelNumber=_progression.CurrentLevel;
             _shuffleUseCount = 0;
             if (levelNumber <= AuthoredLevelCatalog.Count) _currentLevel = AuthoredLevelCatalog.Get(levelNumber);
             else if (!AuthoredLevelCatalog.TryGetBuilt(levelNumber, out _currentLevel)) _currentLevel = LevelGenerator.Generate(levelNumber);
@@ -273,7 +294,7 @@ namespace Cloudora.Puzzle
             _worldScreen.Refresh(_progression.CurrentWorld, _progression.HighestCompletedLevel);
             _mainMenu?.SetProgress(_currentLevel.worldId, _currentLevel.levelId);
             _attemptBlocked = !_lifeManager.CanBeginAttempt(System.DateTime.UtcNow, _currentLevel.levelId <= 5);
-            if (_attemptBlocked) _overlay.ShowBlock("Out of Lives", "Wait for the next life to regenerate.");
+            if (_attemptBlocked) _overlay.ShowBlock("Canın Kalmadı", "Yeni canın dolmasını bekle.");
             _levelStartedAt = Time.realtimeSinceStartup;
             _analytics.Track(AnalyticsEvents.LevelStarted, LevelParams());
             if (_currentLevel.modifiers != null)
@@ -293,6 +314,7 @@ namespace Cloudora.Puzzle
         public void Undo()
         {
             CancelShuffleSelection();
+            ClearSelection();
             // Bitmiş bölümde Undo yok (aksi halde yeniden çözülüp coin iki kez kazanılabilirdi).
             if (_inputLocked || _attemptBlocked || _failed || _isCompleted || _undoHistory.Count == 0)
             {
@@ -301,11 +323,13 @@ namespace Cloudora.Puzzle
 
             if (!_boosterManager.TryUseUndo())
             {
-                RequestReward(RewardedPlacement.Undo, () => _boosterManager.GrantUndo(), "Undo Refilled", "Reward granted +3. Tap Undo again.");
+                RequestReward(RewardedPlacement.Undo, () => _boosterManager.GrantUndo(), "Geri Alma Hakkın Yenilendi", "3 geri alma hakkı kazandın. Geri Al düğmesine dokun.");
                 return;
             }
 
+            CancelSolvabilityCheck();
             RestoreSnapshot(_undoHistory.Pop());
+            BeginSolvabilityCheck();
             _moveCount = Mathf.Max(0, _moveCount - 1);
             _isCompleted = false;
             _overlay.ShowComplete(false);
@@ -317,6 +341,7 @@ namespace Cloudora.Puzzle
 
         private void LoadState(WeatherType[][] levelData)
         {
+            CancelSolvabilityCheck();
             ClearSelection();
             foreach (CloudContainerView container in _containers)
             {
@@ -343,6 +368,7 @@ namespace Cloudora.Puzzle
                 cloud.name = $"Cloud_{i + 1}";
                 cloud.Initialize(_currentLevel.capacity, levelData[i], HandleCloudClicked);
                 _containers.Add(cloud);
+                if(cloud.IsComplete)_celebratedSolvedClouds.Add(cloud);
             }
             // Yeni tahta ekstra bulutları kaldırır; ızgara gerçek bulut sayısına göre yeniden boyutlanmalı.
             _boardLayout.Configure(_containers.Count, _currentLevel.capacity);
@@ -357,6 +383,7 @@ namespace Cloudora.Puzzle
                 return;
             }
 
+            if(clickedCloud.IsComplete)return;
             if (_shuffleSelecting)
             {
                 ShuffleCloud(clickedCloud);
@@ -405,7 +432,9 @@ namespace Cloudora.Puzzle
 
         private IEnumerator PerformMove(CloudContainerView source, CloudContainerView target, WeatherType type, int count)
         {
+            CancelSolvabilityCheck();
             _inputLocked = true;
+            _overlay.SetBusy(true);
             PuzzleSnapshot beforeMove = CaptureSnapshot();
             yield return _moveAnimator.Animate(source, target, type, count);
 
@@ -418,11 +447,15 @@ namespace Cloudora.Puzzle
                 _overlay.SetUndoAvailable(true);
                 CelebrateNewlySolvedClouds();
                 CheckWin();
-                if (!_isCompleted && !HasLegalMove())
+                if(_isCompleted)
                 {
-                    _analytics.Track(AnalyticsEvents.LevelFailed, Params("level", _currentLevel.levelId, "reason", "no_moves", "move_count", _moveCount));
-                    EnterFailState();
+                    ClearSelection();
+                    yield return new WaitForSecondsRealtime(VesselCompletionFlourish.ResultDelay);
+                    _worldScreen.Refresh(_progression.CurrentWorld,_progression.HighestCompletedLevel);
+                    _overlay.ShowComplete(true,_completionReward);_feedback.Complete();
+                    if(_adPolicy.RegisterCompletion(_currentLevel.levelId,System.DateTime.UtcNow))_adService.ShowInterstitial();
                 }
+                else BeginSolvabilityCheck();
             }
 
             ClearSelection();
@@ -478,13 +511,14 @@ namespace Cloudora.Puzzle
             for (int i = 0; i < snapshot.board.Length && i < _containers.Count; i++)
             {
                 _containers[i].RestoreElements(snapshot.board[i]);
+                if(_containers[i].IsComplete)_celebratedSolvedClouds.Add(_containers[i]);
             }
             _modifierRuntime.RestoreSnapshot(snapshot.modifiers);
-            CelebrateNewlySolvedClouds();
         }
 
         private void CheckWin()
         {
+            if(_isCompleted)return;
             foreach (CloudContainerView container in _containers)
             {
                 if (!container.IsSolved())
@@ -496,27 +530,42 @@ namespace Cloudora.Puzzle
             _isCompleted = true;
             _progression.CompleteCurrentLevel();
             if (_currentLevel.levelId <= 15) _saveData.tutorialFlags[_currentLevel.levelId - 1] = true;
-            _worldScreen.Refresh(_progression.CurrentWorld, _progression.HighestCompletedLevel);
             int reward = CoinEconomy.RewardFor(_currentLevel.levelId);
             _coinWallet.Earn(reward);
             _overlay.SetCoins(_coinWallet.Coins);
             _analytics.Track(AnalyticsEvents.CoinsEarned, Params("level", _currentLevel.levelId, "amount", reward));
-            _overlay.ShowComplete(true, reward);
-            _feedback.Complete();
+            _completionReward=reward;
             _analytics.Track(AnalyticsEvents.LevelCompleted, Params("level", _currentLevel.levelId, "duration_seconds", Time.realtimeSinceStartup - _levelStartedAt, "move_count", _moveCount, "seed", _currentLevel.seed));
             if (_currentLevel.levelId == _progression.CurrentWorld.LastLevel)
                 _analytics.Track(AnalyticsEvents.WorldCompleted, Params("world", _progression.CurrentWorld.Id));
-            if (_adPolicy.RegisterCompletion(_currentLevel.levelId, System.DateTime.UtcNow))
-                _adService.ShowInterstitial();
             Debug.Log("Level completed!");
             SaveProgress();
         }
 
+        private void ReturnHome()
+        {
+            if(_inputLocked)return;
+            CancelShuffleSelection();CancelSolvabilityCheck();
+            if(_isCompleted)
+            {
+                if(_progression.CurrentLevel<WorldCatalog.MaxLevel){_progression.Advance();LoadLevel(_progression.CurrentLevel);}
+            }
+            else
+            {
+                // Abandoning any unfinished attempt costs one available life, even in tutorials.
+                // At zero lives the player can still leave; lives never become negative.
+                _lifeManager.TryConsumeRetry(System.DateTime.UtcNow,false);
+                LoadLevel(_progression.CurrentLevel);
+            }
+            SaveProgress();_mainMenu?.Show();
+        }
+
         private void HandleContinue()
         {
+            if(_progression.CurrentLevel>=WorldCatalog.MaxLevel){_overlay.ShowComplete(false);_mainMenu?.Show();return;}
             if (!_lifeManager.CanBeginAttempt(System.DateTime.UtcNow, _progression.CurrentLevel + 1 <= 5))
             {
-                _overlay.ShowBlock("Out of Lives", "Wait for the next life to regenerate.");
+                _overlay.ShowBlock("Canın Kalmadı", "Yeni canın dolmasını bekle.");
                 return;
             }
             _progression.Advance();
@@ -532,18 +581,20 @@ namespace Cloudora.Puzzle
             if (ExtraCloudCount >= MaxExtraCloudsPerLevel)
             {
                 // Shuffle 16'dan önce kilitli; kilitliyken önerilmez.
-                _overlay.ShowBlock("Sky Is Full", IsShuffleUnlocked(_currentLevel.levelId)
-                    ? "Extra clouds used up for this level. Try Undo or Shuffle."
-                    : "Extra clouds used up for this level. Try Undo.");
+                _overlay.ShowBlock("Gökyüzü Doldu", IsShuffleUnlocked(_currentLevel.levelId)
+                    ? "Bu bölümün ek hazne sınırına ulaştın. Geri Al veya Karıştır kullanabilirsin."
+                    : "Bu bölümün ek hazne sınırına ulaştın. Geri Al kullanabilirsin.");
                 return;
             }
             if (!_boosterManager.TryUseExtraCloud())
             {
-                RequestReward(RewardedPlacement.ExtraCloud, () => _boosterManager.GrantExtraCloud(), "Extra Cloud Refilled", "Reward granted. Tap Extra again.");
+                RequestReward(RewardedPlacement.ExtraCloud, () => _boosterManager.GrantExtraCloud(), "Ek Hazne Hakkın Yenilendi", "Ek hazne hakkı kazandın. Ek Bulut düğmesine dokun.");
                 return;
             }
 
+            CancelSolvabilityCheck();
             AddExtraClouds(1);
+            BeginSolvabilityCheck();
             _undoHistory.Clear();
             _overlay.HideBlock();
             RefreshMetaUI();
@@ -565,23 +616,24 @@ namespace Cloudora.Puzzle
             if (_inputLocked || _attemptBlocked || _isCompleted || _failed) return;
             if (!IsShuffleUnlocked(_currentLevel.levelId))
             {
-                _overlay.ShowBlock("Shuffle Locked", $"Available from Level {V3LevelPlan.ShuffleUnlockLevel}.");
+                _overlay.ShowBlock("Karıştır Henüz Kilitli", $"{V3LevelPlan.ShuffleUnlockLevel}. bölümde açılır.");
                 return;
             }
             if (_boosterManager.SafeShuffleCharges <= 0)
             {
-                RequestReward(RewardedPlacement.SafeShuffle, () => _boosterManager.GrantSafeShuffle(), "Shuffle Refilled", "Reward granted. Tap Shuffle again.");
+                RequestReward(RewardedPlacement.SafeShuffle, () => _boosterManager.GrantSafeShuffle(), "Karıştırma Hakkın Yenilendi", "Karıştırma hakkı kazandın. Karıştır düğmesine dokun.");
                 return;
             }
 
             ClearSelection(); // seçili bir bulut varsa seçim kaldırılır
             _shuffleSelecting = true;
-            _overlay.SetModeHint("Select a cloud to shuffle");
+            _overlay.SetModeHint("Karıştırmak için bir hazne seç.");
             _shuffleCancelArea.SetActive(true);
         }
 
         private void ShuffleCloud(CloudContainerView cloud)
         {
+            if(cloud.IsComplete)return;
             int index = _containers.IndexOf(cloud);
             CloudShuffleResult result = CloudShuffler.Shuffle(CaptureSnapshot().board, _currentLevel.capacity, index,
                 _currentLevel.seed + (++_shuffleUseCount * 997), SolverStateLimit, _modifierRuntime.ProtectedClouds());
@@ -592,14 +644,15 @@ namespace Cloudora.Puzzle
                 _feedback.Invalid();
                 _overlay.SetModeHint(result.Rejection switch
                 {
-                    CloudShuffleRejection.Protected => "Special clouds can't be shuffled. Pick another.",
-                    CloudShuffleRejection.NoSafeArrangement => "No safe shuffle for this cloud. Pick another.",
-                    _ => "This cloud can't change. Pick another."
+                    CloudShuffleRejection.Protected => "Özel hazneler karıştırılamaz. Başka bir hazne seç.",
+                    CloudShuffleRejection.NoSafeArrangement => "Bu hazne güvenle karıştırılamıyor. Başka bir hazne seç.",
+                    _ => "Bu hazne değiştirilemiyor. Başka bir hazne seç."
                 });
                 return;
             }
 
             _boosterManager.TryUseSafeShuffle();
+            CancelSolvabilityCheck();
             cloud.RestoreElements(result.Board[index]);
             // Shuffle geri alınamaz: Undo geçmişi temizlenir, Undo butonu söner.
             _undoHistory.Clear();
@@ -655,31 +708,57 @@ namespace Cloudora.Puzzle
             RefreshExtraButton();
         }
 
-        private bool HasLegalMove()
+        private void CancelSolvabilityCheck()
         {
-            for (int source = 0; source < _containers.Count; source++)
+            _boardRevision++;
+            if(_solvabilityRoutine!=null){StopCoroutine(_solvabilityRoutine);_solvabilityRoutine=null;}
+        }
+        private void BeginSolvabilityCheck()
+        {
+            CancelSolvabilityCheck();
+            if(_isCompleted || _failed)return;
+            _solvabilityRoutine=StartCoroutine(CheckCurrentBoard(_boardRevision));
+        }
+        private IEnumerator CheckCurrentBoard(int revision)
+        {
+            // Defer one frame so the move can finish and input can resume.
+            yield return null;
+            var board=CaptureSnapshot().board;
+            string key=PuzzleSolver.ReachabilityKey(board,_currentLevel.capacity);
+            if(!_solvabilityCache.TryGetValue(key,out var result))
             {
-                if (!_containers[source].TryGetTopElement(out WeatherType type)) continue;
-                for (int target = 0; target < _containers.Count; target++)
-                    if (source != target && _modifierRuntime.CanMove(source, target) && _containers[target].CanReceive(type)) return true;
+                var search=new PuzzleSolver.ReachabilitySearch(board,_currentLevel.capacity);
+                do
+                {
+                    result=search.Step();
+                    if(result==SolveStatus.LimitExceeded)yield return null;
+                    if(revision!=_boardRevision)yield break;
+                }while(result==SolveStatus.LimitExceeded);
+                if(_solvabilityCache.Count>512)_solvabilityCache.Clear();
+                _solvabilityCache[key]=result;
             }
-            return false;
+            _solvabilityRoutine=null;
+            if(revision==_boardRevision && !_isCompleted && result==SolveStatus.Unsolvable)
+            {
+                _analytics.Track(AnalyticsEvents.LevelFailed,Params("level",_currentLevel.levelId,"reason","unsolvable","move_count",_moveCount));
+                EnterFailState();
+            }
         }
 
         private void RequestReward(RewardedPlacement placement, System.Action grant, string successTitle, string successMessage)
         {
             if (!_adService.IsAvailable)
             {
-                _overlay.ShowBlock("Reward Unavailable", "Rewarded ads are disabled in this build.");
+                _overlay.ShowBlock("Ödül Alınamadı", "Bu sürümde ödüllü reklamlar kullanılamıyor.");
                 return;
             }
 
-            _overlay.ShowBlock("Reward Pending", "Complete the reward to continue.");
+            _overlay.ShowBlock("Ödül Bekleniyor", "Devam etmek için ödülü tamamla.");
             _adService.ShowRewarded(placement, success =>
             {
                 if (!success)
                 {
-                    _overlay.ShowBlock("Reward Unavailable", "The reward could not be completed.");
+                    _overlay.ShowBlock("Ödül Alınamadı", "Ödül tamamlanamadı. Biraz sonra tekrar dene.");
                     return;
                 }
                 grant?.Invoke();
@@ -691,12 +770,14 @@ namespace Cloudora.Puzzle
 
         private void RefreshMetaUI()
         {
+            _resourceRefreshQueued=true;
             if (_overlay != null)
                 _overlay.SetBoosters(_boosterManager.UndoCharges, _boosterManager.ExtraCloudCharges, _boosterManager.SafeShuffleCharges, _adService.IsAvailable);
         }
 
         private void SaveProgress()
         {
+            _resourceRefreshQueued=true;
             if (_saveService == null || _saveData == null || _progression == null) return;
             _saveData.currentLevel = _progression.ResumeLevel(_isCompleted);
             _saveData.highestCompletedLevel = _progression.HighestCompletedLevel;

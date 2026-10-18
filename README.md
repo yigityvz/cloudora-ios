@@ -37,9 +37,14 @@ Oluşan `Builds/iOS/Cloudora/Unity-iPhone.xcodeproj` dosyasını Xcode ile açı
 
 Ayrıntılar: [iOS derleme rehberi](Docs/IOS_BUILD.md) · [Doğrulama durumu](Docs/IOS_STATUS.md) · [Cihaz testleri](Docs/IOS_DEVICE_QA.md).
 
+## Açılış ekranı
+
+Figma tasarımından alınan bulut ve logo katmanlarıyla animasyonlu açılış, mevcut ana ekrana otomatik geçer. iOS “Hareketi Azalt” ayarı desteklenir. [Uygulama notları](Docs/IOS_OPENING_SPLASH.md).
+
 ## Oyun ve proje yapısı
 
-- İlk 100 bölüm sabit bölüm verileri kullanır; 101 ve sonrası mevcut üreticiyle oluşturulur.
+- Oynanabilir kapsam 100 bölüm ve 3 dünyadır: tanıtım 1–14, Yeşil Vadi 15–30, Rainy Coast 31–60, Frost Peaks 61–100. Bölümler mevcut sabit tahta verilerini kullanır; 101 ve sonrası kapalıdır.
+- Ay, 60. bölümden itibaren beşinci elementtir. Zorluk ve üretim doğrulaması: [Ay geçişi](Docs/IOS_MOON_FROM_60.md).
 - Bulutlar arasında uyumlu hava olayları dokunarak taşınır. Bölümler, zorluk, can, jeton ve yardımcı mekanikleri mevcut oyun sürümüyle korunur.
 - İlerleme ve ayarlar yerel JSON kaydında tutulur; yedek kurtarma desteklenir.
 - `Assets/_Cloudora/Scripts`: oyun kuralları, arayüz ve servisler.
@@ -47,7 +52,7 @@ Ayrıntılar: [iOS derleme rehberi](Docs/IOS_BUILD.md) · [Doğrulama durumu](Do
 - `Assets/_Cloudora/Tests`: EditMode testleri.
 - `Docs`: iOS rehberleri ve bölüm tasarım belgeleri.
 
-Derleme çıktıları, cihaz kayıtları ve imzalama bilgileri Git'e eklenmez. Geliştirme derlemesinde reklam servisi test uygulamasıdır; App Store dağıtımı ayrıca hazırlanmalıdır.
+Derleme çıktıları, cihaz kayıtları ve imzalama bilgileri Git'e eklenmez. Yerel cihaz derlemesi `CLOUDORA_DEVICE_QA` tanımıyla test reklam/ödül servisini korur; Development Build filigranı içermez. Bu bir App Store dağıtımı değildir; mağaza derlemesi QA tanımı olmadan ayrıca hazırlanmalıdır.
 
 ## Katkıda bulunanlar
 

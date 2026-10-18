@@ -1,5 +1,21 @@
 # Cloudora iOS değişiklik kaydı
 
+## 2026-10-19 — güncel iOS kaynak sürümü
+
+- Açılış, ana ekran, dünyalar ve oyun arayüzü; sabit hazneler, elemente özel aktarım ve yedi bitiriş efekti bir araya getirildi.
+- İlk 100 bölüm, gerçek dünya ilerlemesi, çözümsüzlük tespiti, can/ödül kuralları ve Ay’ın 60. bölümden itibaren beşinci element olması dahil edildi.
+- Son EditMode doğrulaması: 235 geçti, 6 atlandı, 0 hata. Unity iOS export, imzalı Xcode Release derlemesi ve mevcut kayıt korunarak iPhone kurulumu başarılı.
+- GitHub kaynak teslimi yalnızca iOS projesini içerir; derlemeler, cihaz kayıtları, yerel imzalama bilgileri ve Project Auditor kopyaları kapsam dışıdır.
+
+## 2026-10-16 — Figma açılış animasyonu
+
+- Onaylı Figma bulut/logo katmanlarıyla yaklaşık 3 saniyelik açılış eklendi.
+- Mevcut ana ekrana otomatik geçer; oyun, bölüm, ekonomi ve kayıt davranışı değişmedi.
+- iOS Hareketi Azalt ayarı desteklenir. Açılış dokunmaları engeller, tamamlanınca engeli kaldırır.
+- Tam EditMode paketi: 193 geçti, 4 atlandı, 0 hata. Son opaklık düzeltmesinden sonra 2 açılış testi yeniden geçti.
+- Unity UI önizlemeleri 390×844, 375×667 ve 393×852 boyutlarında kontrol edildi.
+- Tasarım kaynağı, zamanlama ve varlık açıklamaları: `Docs/IOS_OPENING_SPLASH.md`.
+
 ## 2026-10-16 — iOS depo temizliği
 
 - README iOS kurulum, test ve Xcode akışı için yeniden yazıldı.

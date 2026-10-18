@@ -21,21 +21,21 @@ namespace Cloudora.Level
         {
             return new[]
             {
-                V(1, "Tap a cloud"),
-                V(2, "Tap a matching target"),
-                V(3, "Groups move together"),
-                V(4, "Empty clouds create room"),
-                V(5, "Restore the sky"),
+                V(1, "Bir hazneye dokun."),
+                V(2, "Aynı hava türünün olduğu hazneyi seç."),
+                V(3, "Aynı türden parçalar birlikte akar."),
+                V(4, "Boş hazneler sana yer açar."),
+                V(5, "Gökyüzünü dengele."),
                 V(6, null),
                 V(7, null),
                 V(8, null),
                 V(9, null),
-                V(10, "Undo is always safe"),
+                V(10, "Geri Al ile son hamleni geri çevirebilirsin."),
                 V(11, null),
                 V(12, null),
                 V(13, null),
                 V(14, null),
-                V(15, "The world is waking up")
+                V(15, "İlk dünyanı keşfetmeye hazırsın.")
             };
         }
 

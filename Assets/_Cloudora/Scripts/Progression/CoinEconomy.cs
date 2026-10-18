@@ -3,20 +3,21 @@ using Cloudora.Level;
 
 namespace Cloudora.Progression
 {
-    // v3.1 coin: bölüm sonunda kazanılır, başarısızlıkta "devam" için harcanır. Sayılar ilk ayar; testlerle düzenlenecek.
+    // Shared reward/continue policy for every chapter.
     public static class CoinEconomy
     {
         public const int StartingCoins = 0;   // başlangıç coini ileride tutorial görevinde verilecek
-        public const int ContinueCost = 40;
-        public const int MediumReward = 10;
-        public const int HardReward = 15;
-        public const int VeryHardReward = 20;
-        public const int LegacyReward = 10;   // 101+ (eski sistem)
+        public const int ContinueCost = 500;
+        public const int MediumReward = 100;
+        public const int HardReward = 200;
+        public const int VeryHardReward = 300;
+        public const int LegacyReward = MediumReward;   // compatibility alias
 
         public static int RewardFor(int level)
         {
-            if (level < 1 || level > V3LevelPlan.LastLevel) return LegacyReward;
-            return V3LevelPlan.BandFor(level) switch
+            if(level<1)return 0;
+            // Use the same five-level difficulty cycle for current and future chapters.
+            return V3LevelPlan.BandFor((level-1)%5+1) switch
             {
                 DifficultyBand.Hard => HardReward,
                 DifficultyBand.VeryHard => VeryHardReward,

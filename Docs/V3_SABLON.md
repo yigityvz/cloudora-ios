@@ -1,3 +1,5 @@
+> 19 Ekim 2026 güncellemesi: Ay artık beşinci element olarak 60. bölümde başlar. Bu dosya tarihsel kalibrasyon kararlarını içerir; güncel yayımlama kuralı ve doğrulama: [IOS_MOON_FROM_60.md](IOS_MOON_FROM_60.md).
+
 # v3 1–100 Şablonu (arka plan planı)
 
 > Faz planı: tasarım dokümanı §11l. Bu dosya 1–100'ün genel şablonudur; gerekirse revize edilir (kullanıcı, 2026-10-15).

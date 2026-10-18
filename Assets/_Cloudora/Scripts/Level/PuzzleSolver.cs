@@ -85,6 +85,8 @@ namespace Cloudora.Level
         }
     }
 
+    // Full graph uses current locked-completion rules by default. lockCompleted=false is
+    // only for reproducing the shipped campaign's historical authoring calibration.
     // Tam durum uzayı araması (modifier'sız tahtalar için). Kurallar PuzzleRules ile birebir aynıdır:
     // hamle, kaynağın üst grubunu hedefin alabildiği kadar taşır; hedef boş, aynı renk ya da Rainbow olmalı.
     // Bulut sırası zorluğu değiştirmediği için durumlar sıralanmış bulut kodlarıyla (kanonik) tekilleştirilir.
@@ -93,7 +95,7 @@ namespace Cloudora.Level
         private const int Unreached = -1;
 
         public static PuzzleSolveResult Solve(IReadOnlyList<WeatherType[]> board, int capacity, int maxStates,
-            NaivePlayerStyle naiveStyle = NaivePlayerStyle.Sensible)
+            NaivePlayerStyle naiveStyle = NaivePlayerStyle.Sensible, bool lockCompleted = true)
         {
             int[] start = EncodeBoard(board, capacity);
             if (maxStates < 1) throw new ArgumentOutOfRangeException(nameof(maxStates));
@@ -113,7 +115,7 @@ namespace Cloudora.Level
                 for (int s = 0; s < current.Length; s++)
                 for (int t = 0; t < current.Length; t++)
                 {
-                    if (!TryMove(current, s, t, capacity, out int newSource, out int newTarget, out _)) continue;
+                    if (!TryMove(current, s, t, capacity, out int newSource, out int newTarget, out _,lockCompleted)) continue;
                     StateKey key = Key(current, s, newSource, t, newTarget);
                     if (!index.TryGetValue(key, out int child))
                     {
@@ -174,11 +176,11 @@ namespace Cloudora.Level
                 legalMoves += edges[i].Length;
             }
 
-            (float naiveExcess, float naiveFailure) = SimulateNaivePlayer(states, keys, index, toGoal, capacity, optimal, naiveStyle);
+            (float naiveExcess, float naiveFailure) = SimulateNaivePlayer(states, keys, index, toGoal, capacity, optimal, naiveStyle,lockCompleted);
             var metrics = new DifficultyMetrics(optimal, count, deadRatio,
                 (float)(progressSum / onPath.Count), trapMoves / (float)legalMoves, legalMoves / (float)onPath.Count,
                 naiveExcess, naiveFailure, noMovesDepth, noMovesRatio);
-            return new PuzzleSolveResult(SolveStatus.Solved, metrics, BuildSolution(start, capacity, index, toGoal));
+            return new PuzzleSolveResult(SolveStatus.Solved, metrics, BuildSolution(start, capacity, index, toGoal,lockCompleted));
 
             int Register(int[] state, int stateDepth)
             {
@@ -200,7 +202,7 @@ namespace Cloudora.Level
         private const double ReversalFactor = 0.05; // ≈ e^-3: az önceki duruma geri dönmek çok nadir
 
         private static (float Excess, float Failure) SimulateNaivePlayer(List<int[]> states, List<StateKey> keys,
-            Dictionary<StateKey, int> index, int[] toGoal, int capacity, int optimal, NaivePlayerStyle style)
+            Dictionary<StateKey, int> index, int[] toGoal, int capacity, int optimal, NaivePlayerStyle style,bool lockCompleted)
         {
             var options = new Dictionary<int, (int[] Children, double[] Weights)>();
             var random = new DeterministicRandom(keys[0].GetHashCode());
@@ -215,7 +217,7 @@ namespace Cloudora.Level
                 {
                     if (toGoal[node] == Unreached || moves >= moveCap) { stuck = true; break; }
                     if (!options.TryGetValue(node, out var choice))
-                        options[node] = choice = NaiveOptions(states[node], keys[node], index, capacity, style);
+                        options[node] = choice = NaiveOptions(states[node], keys[node], index, capacity, style,lockCompleted);
                     if (choice.Children.Length == 0) { stuck = true; break; }
 
                     double total = 0;
@@ -243,13 +245,13 @@ namespace Cloudora.Level
 
         // Durumdan gidilebilen farklı tahtalar (kanonik sırayla) ve her birine giden en çekici hamlenin ağırlığı.
         private static (int[] Children, double[] Weights) NaiveOptions(int[] state, StateKey self,
-            Dictionary<StateKey, int> index, int capacity, NaivePlayerStyle style)
+            Dictionary<StateKey, int> index, int capacity, NaivePlayerStyle style,bool lockCompleted)
         {
             var best = new Dictionary<StateKey, double>();
             for (int s = 0; s < state.Length; s++)
             for (int t = 0; t < state.Length; t++)
             {
-                if (!TryMove(state, s, t, capacity, out int newSource, out int newTarget, out Move move)) continue;
+                if (!TryMove(state, s, t, capacity, out int newSource, out int newTarget, out Move move,lockCompleted)) continue;
                 StateKey key = Key(state, s, newSource, t, newTarget);
                 if (key.Equals(self)) continue; // tahtayı değiştirmeyen hamle (bütün bulutu boş buluta taşımak)
                 double weight = style == NaivePlayerStyle.Random ? 1.0 : Math.Exp(Appeal(state[s], state[t], move.Count, capacity));
@@ -322,10 +324,54 @@ namespace Cloudora.Level
             return SolveStatus.Unsolvable;
         }
 
+        // Resumable exact search. Exhaustion proves a loss; a per-frame time budget
+        // only pauses the search and can never be confused with an unsolvable board.
+        public sealed class ReachabilitySearch
+        {
+            private readonly int _capacity;
+            private readonly Stack<int[]> _frontier = new();
+            private readonly HashSet<StateKey> _seen = new();
+            private readonly List<int[]> _empty = new(), _filled = new();
+            public SolveStatus Status { get; private set; } = SolveStatus.LimitExceeded;
+            public int VisitedStates => _seen.Count;
+            public ReachabilitySearch(IReadOnlyList<WeatherType[]> board, int capacity)
+            {
+                _capacity=capacity;var start=EncodeBoard(board,capacity);
+                if(IsSolved(start,capacity)){Status=SolveStatus.Solved;return;}
+                _frontier.Push(start);_seen.Add(Key(start));
+            }
+            public SolveStatus Step(int maxNodes=128, double milliseconds=2)
+            {
+                if(Status!=SolveStatus.LimitExceeded)return Status;
+                var clock=System.Diagnostics.Stopwatch.StartNew();
+                for(int node=0;node<maxNodes && _frontier.Count>0;node++)
+                {
+                    var current=_frontier.Pop();_empty.Clear();_filled.Clear();
+                    for(int a=0;a<current.Length;a++)for(int b=0;b<current.Length;b++)
+                    {
+                        if(!TryMove(current,a,b,_capacity,out int src,out int dst,out _))continue;
+                        var key=Key(current,a,src,b,dst);if(!_seen.Add(key))continue;
+                        var next=With(current,a,src,b,dst);
+                        if(IsSolved(next,_capacity))return Status=SolveStatus.Solved;
+                        (CountOf(current[b])==0?_empty:_filled).Add(next);
+                    }
+                    foreach(var next in _empty)_frontier.Push(next);
+                    foreach(var next in _filled)_frontier.Push(next);
+                    if(clock.Elapsed.TotalMilliseconds>=milliseconds)break;
+                }
+                if(_frontier.Count==0)Status=SolveStatus.Unsolvable;
+                return Status;
+            }
+        }
+
+        // Canonical board codes pad missing columns with zero. For cross-attempt
+        // caching the number of vessels must also be included: an extra empty
+        // vessel can turn an otherwise identical dead board into a solvable one.
+        public static string ReachabilityKey(IReadOnlyList<WeatherType[]> board,int capacity)=>capacity+":"+board.Count+":"+CanonicalKey(board,capacity);
         public static string CanonicalKey(IReadOnlyList<WeatherType[]> board, int capacity) => Key(EncodeBoard(board, capacity)).ToString();
 
         // Gerçek bulut sırasıyla, her adımda çözüme bir adım yaklaştıran ilk hamle seçilir (deterministik).
-        private static Move[] BuildSolution(int[] start, int capacity, Dictionary<StateKey, int> index, int[] toGoal)
+        private static Move[] BuildSolution(int[] start, int capacity, Dictionary<StateKey, int> index, int[] toGoal,bool lockCompleted)
         {
             var solution = new List<Move>();
             int[] current = start;
@@ -336,7 +382,7 @@ namespace Cloudora.Level
                 for (int s = 0; s < current.Length && !advanced; s++)
                 for (int t = 0; t < current.Length && !advanced; t++)
                 {
-                    if (!TryMove(current, s, t, capacity, out int newSource, out int newTarget, out Move move)) continue;
+                    if (!TryMove(current, s, t, capacity, out int newSource, out int newTarget, out Move move,lockCompleted)) continue;
                     if (toGoal[index[Key(current, s, newSource, t, newTarget)]] != remaining - 1) continue;
                     solution.Add(move);
                     current = With(current, s, newSource, t, newTarget);
@@ -409,14 +455,14 @@ namespace Cloudora.Level
             return group;
         }
 
-        private static bool TryMove(int[] state, int s, int t, int capacity, out int newSource, out int newTarget, out Move move)
+        private static bool TryMove(int[] state, int s, int t, int capacity, out int newSource, out int newTarget, out Move move,bool lockCompleted=true)
         {
             newSource = newTarget = 0;
             move = default;
             if (s == t) return false;
             int source = state[s], target = state[t];
             int sourceCount = CountOf(source), targetCount = CountOf(target);
-            if (sourceCount == 0) return false;
+            if (sourceCount == 0 || (lockCompleted&&IsCompleteCloud(source,capacity))) return false;
 
             int weather = At(source, sourceCount - 1);
             int amount = Math.Min(TopGroup(source), capacity - targetCount);
@@ -437,22 +483,15 @@ namespace Cloudora.Level
         }
 
         // PuzzleRules.IsSolved ile aynı: boş olmayan her bulut dolu ve (Rainbow hariç) tek renk.
-        private static bool IsSolved(int[] state, int capacity)
+        private static bool IsCompleteCloud(int code,int capacity)
         {
-            foreach (int code in state)
-            {
-                int count = CountOf(code);
-                if (count == 0) continue;
-                if (count != capacity) return false;
-                int resolved = -1;
-                for (int k = 0; k < count; k++)
-                {
-                    int weather = At(code, k);
-                    if (weather == (int)WeatherType.Rainbow) continue;
-                    if (resolved >= 0 && weather != resolved) return false;
-                    resolved = weather;
-                }
-            }
+            int count=CountOf(code);if(count!=capacity)return false;int resolved=-1;
+            for(int i=0;i<count;i++){int type=At(code,i);if(type==(int)WeatherType.Rainbow)continue;if(resolved>=0&&resolved!=type)return false;resolved=type;}
+            return true;
+        }
+        private static bool IsSolved(int[] state,int capacity)
+        {
+            foreach(int code in state)if(CountOf(code)>0&&!IsCompleteCloud(code,capacity))return false;
             return true;
         }
 

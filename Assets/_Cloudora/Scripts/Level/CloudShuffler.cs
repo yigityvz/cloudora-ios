@@ -38,6 +38,7 @@ namespace Cloudora.Level
         {
             if (cloudIndex < 0 || cloudIndex >= board.Length) throw new ArgumentOutOfRangeException(nameof(cloudIndex));
             if (protectedClouds != null && protectedClouds.Contains(cloudIndex)) return Reject(CloudShuffleRejection.Protected);
+            if(new Cloudora.Core.CloudState(capacity,board[cloudIndex]).IsComplete)return Reject(CloudShuffleRejection.NotShuffleable);
             if (!CanChange(board[cloudIndex])) return Reject(CloudShuffleRejection.NotShuffleable);
 
             List<WeatherType[]> arrangements = DistinctArrangements(board[cloudIndex]);

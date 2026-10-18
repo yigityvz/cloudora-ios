@@ -1,3 +1,4 @@
+using Cloudora.UI;
 using System.Linq;
 using Cloudora.Puzzle;
 using NUnit.Framework;
@@ -11,7 +12,7 @@ namespace Cloudora.Tests.Editor
     public sealed class V32VisualTests
     {
         [TestCase(WeatherType.Snow, "#7FE3F5")]
-        [TestCase(WeatherType.Wind, "#AEB7C2")]
+        [TestCase(WeatherType.Wind, "#43B8A0")]
         [TestCase(WeatherType.Lightning, "#25358A")]
         [TestCase(WeatherType.Sun, "#FFC226")]
         [TestCase(WeatherType.Rain, "#338CFF")]
@@ -40,20 +41,19 @@ namespace Cloudora.Tests.Editor
         }
 
         [Test]
-        public void DarkWeatherShowsWhitePatternAndLightWeatherStaysDark()
+        public void WeatherUsesDistinctModernSymbolsWithoutInterceptingInput()
         {
             var go = new GameObject("Cloud", typeof(RectTransform), typeof(Image), typeof(Button));
             try
             {
                 CloudContainerView view = go.AddComponent<CloudContainerView>();
                 view.Initialize(4, new[] { WeatherType.Lightning, WeatherType.Sun, WeatherType.Rain }, _ => { });
-                Text[] labels = go.GetComponentsInChildren<Text>().Where(t => t.name == "Pattern").ToArray();
-                Text lightning = labels.Single(t => t.text == "!!");
-                Text sun = labels.Single(t => t.text == "*");
-                Text rain = labels.Single(t => t.text == "///");
-                Assert.That(lightning.color, Is.EqualTo(Color.white), "Lightning pattern must be white on night blue");
-                Assert.That(sun.color.grayscale, Is.LessThan(0.4f), "Sun pattern stays dark");
-                Assert.That(rain.color.grayscale, Is.LessThan(0.4f), "Rain pattern stays dark");
+                WeatherGlyph[] symbols=go.GetComponentsInChildren<WeatherGlyph>();
+                Assert.That(symbols.Length,Is.EqualTo(3));
+                foreach(var type in new[]{WeatherType.Lightning,WeatherType.Sun,WeatherType.Rain}){
+                    var icon=symbols.Single(x=>x.Element==type);Assert.That(icon.raycastTarget,Is.False);
+                }
+
             }
             finally
             {

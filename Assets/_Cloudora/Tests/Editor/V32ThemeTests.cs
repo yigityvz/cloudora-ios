@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Cloudora.Tests.Editor
 {
+    // Historical calibration plan; current published palette is checked by MoonRolloutTests.
     // Faz 2.2 (V3_SABLON.md): 31–60 (Tema 2) — 4. renk (Rüzgar) 31'de, dizilim yumuşak başlar (0 açık) ve tema boyunca
     // 1 açık (~41) ve klasik (~51) adımlarıyla karışık olarak zorlaşır; hedefler şablonun eğrisinden.
     public sealed class V32ThemeTests

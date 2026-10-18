@@ -91,7 +91,7 @@ namespace Cloudora.Level
                     continue;
                 }
 
-                PuzzleSolveResult result = PuzzleSolver.Solve(board, frame.Capacity, maxStates);
+                PuzzleSolveResult result = PuzzleSolver.Solve(board,frame.Capacity,maxStates,lockCompleted:false);
                 if (result.Status == SolveStatus.Unsolvable) selection.Unsolvable++;
                 if (result.Status == SolveStatus.LimitExceeded) selection.LimitExceeded++;
                 measured.Add(new LevelCandidate(seed, frame, board, key, result));

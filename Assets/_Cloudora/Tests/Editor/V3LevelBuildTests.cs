@@ -14,8 +14,8 @@ namespace Cloudora.Tests.Editor
         // 1–15'in öğretici yazıları ve çerçevesi değişmez (tasarım §11).
         private static readonly string[] AuthoredCues =
         {
-            "Tap a cloud", "Tap a matching target", "Groups move together", "Empty clouds create room", "Restore the sky",
-            null, null, null, null, "Undo is always safe", null, null, null, null, "The world is waking up"
+            "Bir hazneye dokun.", "Aynı hava türünün olduğu hazneyi seç.", "Aynı türden parçalar birlikte akar.", "Boş hazneler sana yer açar.", "Gökyüzünü dengele.",
+            null, null, null, null, "Geri Al ile son hamleni geri çevirebilirsin.", null, null, null, null, "İlk dünyanı keşfetmeye hazırsın."
         };
 
         private static readonly V3Part[] DesignedParts = { V3Part.Intro, V3Part.Adaptation, V3Part.TransitionTheme, V3Part.Theme2, V3Part.Theme3 };
@@ -29,6 +29,8 @@ namespace Cloudora.Tests.Editor
         }
 
         private static IEnumerable<V3Part> Parts() => DesignedParts;
+        private static IReadOnlyList<V3LevelResult> _published;
+        private static IReadOnlyList<V3LevelResult> Published => _published ??= CampaignMoonRollout.Apply(Parts().SelectMany(Part));
         private const float MediumSeamTolerance = 0.25f;
 
         // ---------- Parça kurulumu ----------
@@ -119,9 +121,9 @@ namespace Cloudora.Tests.Editor
         public void TutorialCuesAreDemonstratedByTheBoard()
         {
             IReadOnlyList<V3LevelResult> intro = Part(V3Part.Intro);
-            // L3 "Groups move together": en kısa çözümde en az bir grup (2+) hamlesi.
+            // L3 "Aynı türden parçalar birlikte akar.": en kısa çözümde en az bir grup (2+) hamlesi.
             Assert.That(intro[2].Primary.Result.Solution.Any(m => m.Count >= 2), Is.True);
-            // L4 "Empty clouds create room": en kısa çözüm boş bir buluta en az bir hamle yapar.
+            // L4 "Boş hazneler sana yer açar.": en kısa çözüm boş bir buluta en az bir hamle yapar.
             Assert.That(UsesEmptyCloud(intro[3].Primary), Is.True);
         }
 
@@ -162,7 +164,7 @@ namespace Cloudora.Tests.Editor
             Assert.That(V3LevelData.BuiltParts, Is.EqualTo(DesignedParts), "regenerate V3LevelData");
             foreach (V3Part part in V3LevelData.BuiltParts)
             {
-                foreach (V3LevelResult result in Part(part))
+                foreach (V3LevelResult result in Published.Where(r=>V3LevelPlan.PartFor(r.Level)==part))
                 {
                     V3LevelEntry entry = V3LevelData.Find(result.Level);
                     Assert.That(entry, Is.Not.Null, $"level {result.Level} missing — regenerate V3LevelData");

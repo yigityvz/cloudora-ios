@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Cloudora.Tests.Editor
 {
+    // Historical calibration plan; current published palette is checked by MoonRolloutTests.
     // Faz 2.2 (V3_SABLON.md, kullanıcı 18:45): 61–100 (Tema 3).
     // 61–80: 4 renk, yeni tema (görsel) ile dizilim nefes alır (0/1 açık), klasik ~71; tuzak bölümleri döngüde 1 → 2.
     // 81–100: Ay (5. renk) 81'de, dizilim 0 açıkla başlar, 1 açık ~86, klasik ~91; boş bulut 81–85 nefes alır,

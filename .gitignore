@@ -129,3 +129,6 @@ InitTestScene*.unity*
 
 # Local IDE configuration
 /.vscode/
+
+# Unity Project Auditor duplicate local settings
+/ProjectSettings/ProjectAuditorSettings [0-9]*.asset

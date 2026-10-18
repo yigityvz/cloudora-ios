@@ -69,10 +69,11 @@ namespace Cloudora.Editor
             code.Append("        public static readonly V3Part[] BuiltParts = { ")
                 .Append(string.Join(", ", PartsToBuild.Select(p => "V3Part." + p))).Append(" };\r\n\r\n");
             code.Append("        private static readonly V3LevelEntry[] Entries =\r\n        {\r\n");
+            var campaign=CampaignMoonRollout.Apply(PartsToBuild.SelectMany(V3LevelBuilder.BuildPart));
             foreach (V3Part part in PartsToBuild)
             {
                 code.Append($"            // {part}\r\n");
-                foreach (V3LevelResult r in V3LevelBuilder.BuildPart(part))
+                foreach (V3LevelResult r in campaign.Where(r=>V3LevelPlan.PartFor(r.Level)==part))
                 {
                     DifficultyMetrics m = r.Primary.Result.Metrics;
                     code.Append($"            new V3LevelEntry({r.Level}, DifficultyBand.{r.Band}, {r.Frame.Capacity}, {r.Primary.Seed}, " +
@@ -118,7 +119,7 @@ namespace Cloudora.Editor
         private static bool WritePreview(V3Part part)
         {
             var timer = Stopwatch.StartNew();
-            IReadOnlyList<V3LevelResult> results = V3LevelBuilder.BuildPart(part);
+            IReadOnlyList<V3LevelResult> results = CampaignMoonRollout.Apply(PartsToBuild.SelectMany(V3LevelBuilder.BuildPart)).Where(r=>V3LevelPlan.PartFor(r.Level)==part).ToArray();
             timer.Stop();
             var csv = new StringBuilder("level,band,target,score,deviation,frame,novelty,seed,optimal_moves,progress_ratio,dead_ratio,trap_ratio,naive_excess,naive_fail,no_moves_depth,no_moves_states,board\n");
             foreach (V3LevelResult r in results)
@@ -239,7 +240,7 @@ namespace Cloudora.Editor
             {
                 V3LevelEntry entry = V3LevelData.Find(level);
                 if (entry == null) continue;
-                DifficultyMetrics m = PuzzleSolver.Solve(entry.CreateBoard(), entry.Capacity, MaxStates).Metrics;
+                DifficultyMetrics m = PuzzleSolver.Solve(entry.CreateBoard(),entry.Capacity,MaxStates,lockCompleted:false).Metrics;
                 Debug.Log($"CLOUDORA_V3_CAL level={level} band={entry.Band} board={entry.Board} {m}");
             }
         }

@@ -24,7 +24,8 @@ namespace Cloudora.Editor
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { GameplayScene }, locationPathName = output,
-                target = BuildTarget.iOS, options = BuildOptions.Development
+                target = BuildTarget.iOS, options = BuildOptions.None,
+                extraScriptingDefines = new[] { "CLOUDORA_DEVICE_QA" }
             });
             Debug.Log($"CLOUDORA_IOS_BUILD result={report.summary.result} output={output} errors={report.summary.totalErrors} warnings={report.summary.totalWarnings}");
             if (report.summary.result != BuildResult.Succeeded)

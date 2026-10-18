@@ -243,23 +243,18 @@ namespace Cloudora.Tests.Editor
         // ---------- Arayüz: buton düzeni ve başarısızlık ekranı ----------
 
         [Test]
-        public void ButtonLayoutHasNoRestartAndCentersWorldAndMenu()
+        public void FigmaHelpersHaveDistinctTouchTargetsAndNoRestart()
         {
             (GameObject root, GameplayOverlay overlay) = CreateOverlay();
-            try
-            {
-                Assert.That(Find(root, "RestartButton"), Is.Null, "Restart button must be gone");
-                Vector2 extra = Pos(root, "ExtraButton"), undo = Pos(root, "UndoButton"), shuffle = Pos(root, "ShuffleButton");
-                Vector2 world = Pos(root, "WorldButton"), menu = Pos(root, "MenuButton");
-                Assert.That(extra.x, Is.LessThan(undo.x));
-                Assert.That(undo.x, Is.LessThan(shuffle.x));
-                Assert.That(new[] { extra.y, undo.y, shuffle.y }.Distinct().Count(), Is.EqualTo(1), "top row aligned");
-                Assert.That(world.y, Is.EqualTo(menu.y), "bottom row aligned");
-                Assert.That(world.y, Is.LessThan(undo.y), "World/Menu below the boosters");
-                Assert.That(world.x, Is.EqualTo((extra.x + undo.x) / 2f).Within(0.01f));
-                Assert.That(menu.x, Is.EqualTo((undo.x + shuffle.x) / 2f).Within(0.01f));
-            }
-            finally { Object.DestroyImmediate(root); }
+            try {
+                Assert.That(Find(root,"RestartButton"),Is.Null);
+                Vector2 undo=Pos(root,"UndoButton"),extra=Pos(root,"ExtraButton"),shuffle=Pos(root,"ShuffleButton");
+                Assert.That(undo.x,Is.LessThan(extra.x));Assert.That(extra.x,Is.LessThan(shuffle.x));
+                Assert.That(undo.y,Is.EqualTo(extra.y));Assert.That(extra.y,Is.EqualTo(shuffle.y));
+                foreach(string name in new[]{"UndoButton","ExtraButton","ShuffleButton"}){
+                    var r=(RectTransform)Find(root,name).transform;Assert.That(r.sizeDelta.x,Is.GreaterThanOrEqualTo(44));Assert.That(r.sizeDelta.y,Is.GreaterThanOrEqualTo(44));
+                }
+            } finally {Object.DestroyImmediate(root);}
         }
 
         [Test]
@@ -289,21 +284,11 @@ namespace Cloudora.Tests.Editor
         }
 
         [Test]
-        public void LifeAdButtonSitsNextToLivesAtTopRight()
+        public void LifeAdRemainsAvailableFromPauseMenu()
         {
-            // Geliştirme için: sağ üstte, can göstergesinin yanında "reklam izle → +1 can" butonu.
-            (GameObject root, GameplayOverlay overlay) = CreateOverlay();
-            try
-            {
-                GameObject button = Find(root, "LifeAdButton");
-                Assert.That(button, Is.Not.Null);
-                Assert.That(button.GetComponent<Button>(), Is.Not.Null);
-                var rect = (RectTransform)button.transform;
-                Assert.That(rect.anchorMin, Is.EqualTo(new Vector2(0.5f, 1f)), "anchored to the top");
-                Assert.That(rect.anchoredPosition.x, Is.GreaterThan(300f), "right side, with the lives");
-                Assert.That(rect.anchoredPosition.y, Is.LessThan(-90f), "below the lives counter");
-            }
-            finally { Object.DestroyImmediate(root); }
+            (GameObject root,GameplayOverlay overlay)=CreateOverlay();
+            try { var button=Find(root,"LifeAdButton");Assert.That(button,Is.Not.Null);Assert.That(button.GetComponent<Button>(),Is.Not.Null);Assert.That(button.transform.IsChildOf(Find(root,"PausePanel").transform),Is.True); }
+            finally {Object.DestroyImmediate(root);}
         }
 
         [Test]
